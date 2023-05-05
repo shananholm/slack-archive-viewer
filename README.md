@@ -24,7 +24,7 @@ This is designed for the archive format I had locally, which consisted of a file
 ...
 </pre>
 
-You'll also need a local webserver and Python or patience to create the index files.
+You'll also need a local webserver and Python (to run create_index_files.py) or patience to create the index files another way.
 
 # Set up
 
@@ -38,10 +38,11 @@ The view relies on an `index.json` fpr each channel to be present in the folder 
 ]
 ```
 
-The only othe requirement is a local webserver, if running locally. I kept it simple with:
+The only othe requirement is a local webserver, if running locally. It most likely won't run locally without a web server of some kind. I kept it simple with:
 `npx http-server`
+The open a browser to `http://localhost:8081/index.html` or whereever `http-server` tells you to go.
 
 # What else?
-There's nothing else, and there's not much to it. But it's definitely a lot easier to navigate than folders of JSON files.
+There's nothing else, and there's not much to it. But it's definitely a lot easier to navigate than countless folders of JSON files.
 
 If you want to repeat the experiment with another archived format, you can make a lot of progress quickly by supplying the GPT model with a sample of the data you're trying to display as well as the folder structure it is displayed in.
