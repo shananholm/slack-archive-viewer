@@ -10,11 +10,14 @@ I was using Slack for a couple of very small community projects at the time that
 # Requirements
 This is designed for the archive format I had locally, which consisted of a file structure like this:
 <pre>
+|- index.html (from this repo)
+|- create_index_files.py (from this repo)
 |- users.json
 |- channels.json
 |- channel-1 (folder)
    |- 2023-01-01.json
    |- 2023-01-02.json
+   |- index.json (added by create_index_files.py)
    |- files (folder)
       |- attachment-1.pdf
 |- channel-2 (folder)
