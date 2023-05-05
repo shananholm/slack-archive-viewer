@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slack Archive Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; }
+        h1 { background-color: #4A154B; color: white; padding: 10px; margin: 0; }
+        #channels, #messages { min-height: calc(100vh - 74px); overflow-y: auto; padding: 20px; }
+        #channels { border-right: 1px solid #DDD; }
+        .channel-item { cursor: pointer; }
+        .channel-item:hover { background-color: #4A154B; color: white; }
+        .channel-item.active { background-color: #4A154B; color: white; }
+        #messages div { background-color: white; padding: 10px; border-radius: 6px; margin-bottom: 6px; }
+        #messages div a { display: block; color: #1264a3; text-decoration: none; margin-top: 4px; }
+        #messages div a:hover { text-decoration: underline; }
+        #search { padding: 10px; background-color: white; border-bottom: 1px solid #DDD; }
+        #search input { width: 100%; padding: 6px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Slack Archive Viewer</h1>
+    <div class="container">
+        <div class="row">
+            <div id="channels" class="col-md-3"></div>
+            <div class="col-md-9">
+                <div id="search">
+                    <input type="text" id="searchInput" placeholder="Search messages..." class="form-control">
+                </div>
+                <div id="messages"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let channelsJson = [];
+        let usersJson = [];
+        let currentMessages = [];
+        let currentChannelFolder = "";
+        let activeChannelElement = null;
+
+        const channelsElement = document.getElementById("channels");
+        const messagesElement = document.getElementById("messages");
+        const searchInput = document.getElementById("searchInput");
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString();
+        }
+
+        function getFileLinks(files, channelFolder) {
+            if (!files || files.length === 0) {
+                return '';
+            }
+            return files.map(file => {
+                const fileId = file.id;
+                const fileName = file.name;
+                const filePath = `./${channelFolder}/files/${fileId}_${fileName}`;
+                return `<a href="${filePath}" target="_blank">${fileName}</a>`;
+            }).join(', ');
+        }
+
+        function renderMessages(messages, channelFolder) {
+            messagesElement.innerHTML = "";
+            messages.forEach(message => {
+                const user = usersJson.find(u => u.id === message.user);
+                const userDisplayName = user ? user.profile.display_name : message.user;
+                const messageElement = document.createElement("div");
+                const fileLinks = getFileLinks(message.files, channelFolder);
+                messageElement.innerHTML = `<strong>${userDisplayName}</strong> (${formatDate(message.ts)}): ${message.text} ${fileLinks}`;
+                messagesElement.appendChild(messageElement);
+            });
+        }
+
+        function searchMessages() {
+            const searchKeyword = searchInput.value.toLowerCase();
+            if (searchKeyword === "") {
+                renderMessages(currentMessages, currentChannelFolder);
+            } else {
+                const filteredMessages = currentMessages.filter(message => message.text.toLowerCase().includes(searchKeyword));
+                renderMessages(filteredMessages, currentChannelFolder);
+            }
+        }
+
+        async function loadChannel(channel, channelElement) {
+            if (activeChannelElement) {
+                activeChannelElement.classList.remove("active");
+            }
+            channelElement.classList.add("active");
+            activeChannelElement = channelElement;
+
+            searchInput.value = "";
+            searchInput.oninput = searchMessages;
+            const channelFolder = channel.name;
+            currentChannelFolder = channelFolder;
+            const files = await getChannelFiles(channelFolder);
+
+            currentMessages = [];
+            for (const file of files) {
+                const response = await fetch(`./${channelFolder}/${file}`);
+                const messages = await response.json();
+                currentMessages.push(...messages);
+            }
+            renderMessages(currentMessages, channelFolder);
+        }
+
+        async function getChannelFiles(channelFolder) {
+            try {
+                const listResponse = await fetch(`./${channelFolder}/index.json`);
+                const fileList = await listResponse.json();
+                return fileList;
+            } catch (error) {
+                console.error(`Error fetching index.json for './${channelFolder}': `, error);
+                return [];
+            }
+        }
+
+        function createChannelElement(channel) {
+            const channelElement = document.createElement("div");
+            channelElement.classList.add("list-group-item", "channel-item");
+            channelElement.textContent = channel.name;
+            channelElement.onclick = () => loadChannel(channel, channelElement);
+            return channelElement;
+        }
+
+        async function init() {
+            const channelsResponse = await fetch('./channels.json');
+            channelsJson = await channelsResponse.json();
+
+            const usersResponse = await fetch('./users.json');
+            usersJson = await usersResponse.json();
+
+            channelsElement.classList.add("list-group");
+            channelsJson.forEach(channel => {
+                const channelElement = createChannelElement(channel);
+                channelsElement.appendChild(channelElement);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
